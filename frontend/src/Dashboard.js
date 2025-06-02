@@ -271,7 +271,7 @@ const Dashboard = ({ sessionData, results, onNewAnalysis }) => {
           </div>
         </motion.div>
       )}
-    </div>
+     </div>
   );
 };
 
