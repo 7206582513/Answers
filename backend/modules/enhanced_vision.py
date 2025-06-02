@@ -370,6 +370,3 @@ class EnhancedImageProcessor:
                     continue
 
         return numeric_values
-
-
-

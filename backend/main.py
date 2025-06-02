@@ -29,11 +29,11 @@ import pickle
 from dotenv import load_dotenv
 
 # Import our enhanced modules
-from modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
-from modules.enhanced_eda import AutoEDAPipeline
-from modules.enhanced_ml import EnhancedMLPipeline
-from modules.enhanced_chat import IntelligentChatEngine
-from modules.database import DatabaseManager
+from backend.modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
+from backend.modules.enhanced_eda import AutoEDAPipeline
+from backend.modules.enhanced_ml import EnhancedMLPipeline
+from backend.modules.enhanced_chat import IntelligentChatEngine
+from backend.modules.database import DatabaseManager
 
 load_dotenv()
 
