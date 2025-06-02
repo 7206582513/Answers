@@ -1,32 +1,23 @@
 # backend/api.py
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, WebSocket, WebSocketDisconnect, Session
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-import uuid, os, json, cv2, pandas as pd, numpy as np
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-from pdf2image import convert_from_bytes
-from sqlalchemy.orm import Session
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-import uuid, os, json, cv2, pandas as pd, numpy as np
+from sqlalchemy.orm import Session
+
+import uuid, os, json, cv2
+import pandas as pd
+import numpy as np
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pdf2image import convert_from_bytes
-from sqlalchemy.orm import Session
 
 from .modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
 from .modules.enhanced_eda import AutoEDAPipeline
 from .modules.enhanced_ml import EnhancedMLPipeline
 from .modules.enhanced_chat import IntelligentChatEngine
-from utils.pdf_utils import analyze_pdf_charts
-from modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
-from modules.enhanced_eda import AutoEDAPipeline
-from modules.enhanced_ml import EnhancedMLPipeline
-from modules.enhanced_chat import IntelligentChatEngine
-from modules.database import get_db, AnalysisSession, ChatMessage
+from .modules.database import get_db, AnalysisSession, ChatMessage
+from .utils.pdf_utils import analyze_pdf_charts
 
 
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
@@ -174,3 +165,7 @@ async def chat_with_ai(request: ChatRequest, db: Session = Depends(get_db)):
 
 
 # Optional: you can move websocket, download, session routes here as well
+
+
+
+

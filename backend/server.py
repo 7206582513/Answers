@@ -28,63 +28,14 @@ from langdetect import detect
 import pickle
 from dotenv import load_dotenv
 
-# Import our enhanced modules
-try:
-    from modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
-    from modules.enhanced_eda import AutoEDAPipeline
-    from modules.enhanced_ml import EnhancedMLPipeline
-    from modules.enhanced_chat import IntelligentChatEngine
-    from modules.database import DatabaseManager
-except ImportError:
-    print("Warning: Some modules not found, using mock implementations")
-
-
-    class CNNChartClassifier:
-        def classify_chart(self, image):
-            return "bar_chart", 0.85
-
-
-    class EnhancedImageProcessor:
-        def extract_chart_data(self, image, chart_type):
-            return {"sample": "data"}
-
-        def extract_chart_regions(self, image):
-            return [image]
-
-
-    class AutoEDAPipeline:
-        async def run_analysis(self, df, task_type, target_column):
-            return df, {"basic_stats": df.describe().to_dict()}
-
-
-    class EnhancedMLPipeline:
-        async def train_and_evaluate(self, df, task_type, target_column):
-            return {"accuracy": 0.85, "model_type": "mock"}
-
-
-    class IntelligentChatEngine:
-        def __init__(self, api_key, api_url, model):
-            self.api_key = api_key
-            self.api_url = api_url
-            self.model = model
-
-        async def generate_response(self, message, context, context_type):
-            return f"Mock response to: {message}"
-
-        async def generate_chart_insights(self, chart_type, data, dataset=None):
-            return [f"This appears to be a {chart_type} chart"]
-
-        async def generate_summary_insights(self, chart_data, dataset):
-            return "Summary of chart analysis"
-
-
-    class DatabaseManager:
-        def __init__(self, engine):
-            self.engine = engine
+from backend.modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
+from backend.modules.enhanced_eda import AutoEDAPipeline
+from backend.modules.enhanced_ml import EnhancedMLPipeline
+from backend.modules.enhanced_chat import IntelligentChatEngine
+from backend.modules.database import DatabaseManager
 
 load_dotenv()
 
-# Configuration
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
 OUTPUT_FOLDER = os.getenv('OUTPUT_FOLDER', 'outputs')
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
@@ -92,14 +43,32 @@ GROQ_API_URL = os.getenv('GROQ_API_URL')
 GROQ_MODEL = os.getenv('GROQ_MODEL')
 DATABASE_URL = os.getenv('MONGO_URL', 'sqlite:///./insightforge.db')
 
-# Create directories
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs('static/charts', exist_ok=True)
 
-# Database setup
 Base = declarative_base()
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+app = FastAPI(title="InsightForge AI", version="2.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+chart_classifier = CNNChartClassifier()
+image_processor = EnhancedImageProcessor()
+eda_pipeline = AutoEDAPipeline()
+ml_pipeline = EnhancedMLPipeline()
+chat_engine = IntelligentChatEngine(GROQ_API_KEY, GROQ_API_URL, GROQ_MODEL)
+db_manager = DatabaseManager(engine)
 
 class AnalysisSession(Base):
     __tablename__ = "analysis_sessions"
@@ -112,7 +81,6 @@ class AnalysisSession(Base):
     results = Column(Text)
     chat_history = Column(Text)
 
-
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
@@ -123,15 +91,10 @@ class ChatMessage(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     context_type = Column(String)
 
-
-engine = create_engine(DATABASE_URL)
 Base.metadata.create_all(bind=engine)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Initialize FastAPI app
 app = FastAPI(title="InsightForge AI", version="2.0.0")
 
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -140,22 +103,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Initialize enhanced modules
 chart_classifier = CNNChartClassifier()
 image_processor = EnhancedImageProcessor()
 eda_pipeline = AutoEDAPipeline()
 ml_pipeline = EnhancedMLPipeline()
 chat_engine = IntelligentChatEngine(GROQ_API_KEY, GROQ_API_URL, GROQ_MODEL)
-try:
-    db_manager = DatabaseManager(engine)
-except:
-    db_manager = None
+db_manager = DatabaseManager(engine)
 
-
-# Dependency to get DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -163,19 +119,10 @@ def get_db():
     finally:
         db.close()
 
-
-# Pydantic models
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
     context_type: Optional[str] = "general"
-
-
-class AnalysisRequest(BaseModel):
-    task_type: str
-    target_column: str
-    session_id: Optional[str] = None
-
 
 class ChartAnalysisResponse(BaseModel):
     chart_type: str
@@ -183,8 +130,6 @@ class ChartAnalysisResponse(BaseModel):
     extracted_data: Dict[str, Any]
     insights: List[str]
 
-
-# WebSocket manager for real-time chat
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -203,63 +148,51 @@ class ConnectionManager:
         for connection in self.active_connections:
             await connection.send_text(message)
 
-
 manager = ConnectionManager()
 
+@app.get("/")
+async def root():
+    return {"message": "Welcome to InsightForge.AI backend!", "status": "running"}
 
-# API Routes
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "service": "InsightForge AI", "version": "2.0.0"}
 
-
 @app.post("/api/upload-dataset")
 async def upload_dataset(
-        file: UploadFile = File(...),
-        task_type: str = Form(...),
-        target_column: str = Form(...),
-        pdf_file: Optional[UploadFile] = File(None),
-        db: Session = Depends(get_db)
+    file: UploadFile = File(...),
+    task_type: str = Form(...),
+    target_column: str = Form(...),
+    pdf_file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
 ):
     try:
-        # Create new session
         session_id = str(uuid.uuid4())
-
-        # Save uploaded files
         dataset_path = os.path.join(UPLOAD_FOLDER, f"{session_id}_{file.filename}")
         with open(dataset_path, "wb") as buffer:
-            content = await file.read()
-            buffer.write(content)
+            buffer.write(await file.read())
 
-        # Load and validate dataset
         df = pd.read_csv(dataset_path)
-        df.columns = df.columns.str.strip()
+        df.columns = df.columns.str.strip().str.replace(" ", "").str.title()
+        normalized_target = target_column.strip().replace(" ", "").title()
 
-        if target_column not in df.columns:
+        if normalized_target not in df.columns:
             raise HTTPException(400, f"Target column '{target_column}' not found")
 
-        # Run enhanced EDA pipeline
-        cleaned_df, eda_results = await eda_pipeline.run_analysis(df, task_type, target_column)
-
-        # Run enhanced ML pipeline
-        model_results = await ml_pipeline.train_and_evaluate(cleaned_df, task_type, target_column)
-
-        # Process PDF if provided
+        cleaned_df, eda_results = await eda_pipeline.run_analysis(df, task_type, normalized_target)
+        model_results = await ml_pipeline.train_and_evaluate(cleaned_df, task_type, normalized_target)
+        print("step 1")
         pdf_insights = None
         if pdf_file:
             pdf_path = os.path.join(UPLOAD_FOLDER, f"{session_id}_{pdf_file.filename}")
             with open(pdf_path, "wb") as buffer:
-                pdf_content = await pdf_file.read()
-                buffer.write(pdf_content)
-
-            # Enhanced chart analysis
+                buffer.write(await pdf_file.read())
             pdf_insights = await analyze_pdf_charts(pdf_path, cleaned_df)
 
-        # Save session to database
         session_data = AnalysisSession(
             id=session_id,
             task_type=task_type,
-            target_column=target_column,
+            target_column=normalized_target,
             dataset_info=json.dumps({
                 "shape": cleaned_df.shape,
                 "columns": list(cleaned_df.columns),
@@ -271,7 +204,7 @@ async def upload_dataset(
                 "pdf_insights": pdf_insights
             })
         )
-
+        print("step 2")
         db.add(session_data)
         db.commit()
 
@@ -279,36 +212,23 @@ async def upload_dataset(
             "session_id": session_id,
             "eda_results": eda_results,
             "ml_results": model_results,
-            "pdf_insights": pdf_insights,
-            "dataset_info": {
-                "shape": cleaned_df.shape,
-                "columns": list(cleaned_df.columns)
-            }
+            "pdf_insights": pdf_insights
         }
 
     except Exception as e:
-        raise HTTPException(500, f"Analysis failed: {str(e)}")
-
+        print("error")
+        raise HTTPException(500, f"Upload error: {str(e)}")
 
 @app.post("/api/analyze-chart")
 async def analyze_chart(file: UploadFile = File(...)):
     try:
-        # Save uploaded image
         image_path = os.path.join(UPLOAD_FOLDER, f"chart_{uuid.uuid4().hex}_{file.filename}")
         with open(image_path, "wb") as buffer:
-            content = await file.read()
-            buffer.write(content)
+            buffer.write(await file.read())
 
-        # Load image
         image = cv2.imread(image_path)
-
-        # Enhanced chart classification
         chart_type, confidence = chart_classifier.classify_chart(image)
-
-        # Enhanced data extraction
         extracted_data = image_processor.extract_chart_data(image, chart_type)
-
-        # Generate insights
         insights = await chat_engine.generate_chart_insights(chart_type, extracted_data)
 
         return ChartAnalysisResponse(
@@ -317,33 +237,24 @@ async def analyze_chart(file: UploadFile = File(...)):
             extracted_data=extracted_data,
             insights=insights
         )
-
     except Exception as e:
-        raise HTTPException(500, f"Chart analysis failed: {str(e)}")
-
+        raise HTTPException(500, f"Chart error: {str(e)}")
 
 @app.post("/api/chat")
 async def chat_with_ai(request: ChatRequest, db: Session = Depends(get_db)):
     try:
-        # Get session context if provided
         context = {}
         if request.session_id:
-            session = db.query(AnalysisSession).filter(AnalysisSession.id == request.session_id).first()
+            session = db.query(AnalysisSession).filter_by(id=request.session_id).first()
             if session:
                 context = {
                     "task_type": session.task_type,
                     "target_column": session.target_column,
-                    "results": json.loads(session.results) if session.results else {}
+                    "results": json.loads(session.results)
                 }
 
-        # Generate response using enhanced chat engine
-        response = await chat_engine.generate_response(
-            request.message,
-            context,
-            request.context_type
-        )
+        response = await chat_engine.generate_response(request.message, context, request.context_type)
 
-        # Save chat message
         chat_msg = ChatMessage(
             session_id=request.session_id,
             message=request.message,
@@ -353,11 +264,10 @@ async def chat_with_ai(request: ChatRequest, db: Session = Depends(get_db)):
         db.add(chat_msg)
         db.commit()
 
-        return {"response": response, "session_id": request.session_id}
+        return {"response": response}
 
     except Exception as e:
-        raise HTTPException(500, f"Chat failed: {str(e)}")
-
+        raise HTTPException(500, f"Chat error: {str(e)}")
 
 @app.get("/api/sessions/{session_id}")
 async def get_session(session_id: str, db: Session = Depends(get_db)):
@@ -365,7 +275,6 @@ async def get_session(session_id: str, db: Session = Depends(get_db)):
     if not session:
         raise HTTPException(404, "Session not found")
 
-    # Get chat history
     chat_history = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).all()
 
     return {
@@ -388,7 +297,6 @@ async def get_session(session_id: str, db: Session = Depends(get_db)):
         ]
     }
 
-
 @app.get("/api/sessions")
 async def get_all_sessions(limit: int = 50, db: Session = Depends(get_db)):
     sessions = db.query(AnalysisSession).order_by(AnalysisSession.created_at.desc()).limit(limit).all()
@@ -405,20 +313,17 @@ async def get_all_sessions(limit: int = 50, db: Session = Depends(get_db)):
         ]
     }
 
-
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str, db: Session = Depends(get_db)):
     session = db.query(AnalysisSession).filter(AnalysisSession.id == session_id).first()
     if not session:
         raise HTTPException(404, "Session not found")
 
-    # Delete chat messages
     db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
     db.delete(session)
     db.commit()
 
     return {"message": "Session deleted successfully"}
-
 
 @app.get("/api/download/{session_id}/{file_type}")
 async def download_file(session_id: str, file_type: str):
@@ -442,7 +347,6 @@ async def download_file(session_id: str, file_type: str):
     except Exception as e:
         raise HTTPException(500, f"Download failed: {str(e)}")
 
-
 @app.websocket("/api/ws/chat/{session_id}")
 async def websocket_chat(websocket: WebSocket, session_id: str):
     await manager.connect(websocket)
@@ -451,14 +355,12 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
             data = await websocket.receive_text()
             message_data = json.loads(data)
 
-            # Process message with chat engine
             response = await chat_engine.generate_response(
                 message_data["message"],
                 {},
                 message_data.get("context_type", "general")
             )
 
-            # Send response back
             await manager.send_personal_message(
                 json.dumps({"response": response, "timestamp": str(datetime.now())}),
                 websocket
@@ -467,37 +369,21 @@ async def websocket_chat(websocket: WebSocket, session_id: str):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-
-# Helper functions
 async def analyze_pdf_charts(pdf_path: str, dataset: pd.DataFrame) -> Dict[str, Any]:
-    """Enhanced PDF chart analysis with CNN classification"""
     try:
-        # Convert PDF to images
         with open(pdf_path, 'rb') as f:
             images = convert_from_bytes(f.read())
 
-        all_insights = []
         chart_data = []
-
         for i, page in enumerate(images):
-            # Convert to OpenCV format
             np_img = np.array(page)
             img_cv = cv2.cvtColor(np_img, cv2.COLOR_RGB2BGR)
-
-            # Extract chart regions
             chart_regions = image_processor.extract_chart_regions(img_cv)
 
             for j, chart_img in enumerate(chart_regions):
-                # Classify chart type
                 chart_type, confidence = chart_classifier.classify_chart(chart_img)
-
-                # Extract data
                 extracted_data = image_processor.extract_chart_data(chart_img, chart_type)
-
-                # Generate insights
-                insights = await chat_engine.generate_chart_insights(
-                    chart_type, extracted_data, dataset
-                )
+                insights = await chat_engine.generate_chart_insights(chart_type, extracted_data, dataset)
 
                 chart_data.append({
                     "page": i + 1,
@@ -517,11 +403,6 @@ async def analyze_pdf_charts(pdf_path: str, dataset: pd.DataFrame) -> Dict[str, 
     except Exception as e:
         return {"error": f"PDF analysis failed: {str(e)}"}
 
-from backend.api import router as api_router
-
-app.include_router(api_router, prefix="/api")
-
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8001)

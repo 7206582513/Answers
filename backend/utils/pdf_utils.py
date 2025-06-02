@@ -371,5 +371,15 @@ class EnhancedImageProcessor:
 
         return numeric_values
 
+def analyze_pdf_charts(image: np.ndarray) -> Dict[str, Any]:
+    classifier = CNNChartClassifier()
+    processor = EnhancedImageProcessor()
+    chart_type, confidence = classifier.classify_chart(image)
+    chart_data = processor.extract_chart_data(image, chart_type)
+    chart_data["confidence"] = confidence
+    return chart_data
+
+
+
 
 

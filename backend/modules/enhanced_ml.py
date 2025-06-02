@@ -120,7 +120,7 @@ class EnhancedMLPipeline:
                 }
             }
         }
-
+        print("Yha ykk")
     async def train_and_evaluate(self, df: pd.DataFrame, task_type: str, target_col: str) -> Dict[str, Any]:
         """Enhanced training and evaluation pipeline"""
         if target_col not in df.columns:
