@@ -8,7 +8,20 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pdf2image import convert_from_bytes
 from sqlalchemy.orm import Session
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+import uuid, os, json, cv2, pandas as pd, numpy as np
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+from pdf2image import convert_from_bytes
+from sqlalchemy.orm import Session
 
+from .modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
+from .modules.enhanced_eda import AutoEDAPipeline
+from .modules.enhanced_ml import EnhancedMLPipeline
+from .modules.enhanced_chat import IntelligentChatEngine
+from .modules.pdf_processor import analyze_pdf_charts'
 from modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
 from modules.enhanced_eda import AutoEDAPipeline
 from modules.enhanced_ml import EnhancedMLPipeline
