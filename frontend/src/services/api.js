@@ -1,10 +1,8 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-
 // Get backend URL from environment variable
 const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001/api';
-
 
 // Create axios instance with default config
 const api = axios.create({
@@ -14,7 +12,6 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
 
 // Request interceptor
 api.interceptors.request.use(
@@ -26,7 +23,6 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
-
 
 // Response interceptor
 api.interceptors.response.use(
@@ -52,7 +48,6 @@ api.interceptors.response.use(
   }
 );
 
-
 export const apiService = {
   // Health check
   healthCheck: async () => {
@@ -63,7 +58,6 @@ export const apiService = {
       throw error;
     }
   },
-
 
   // Upload dataset and run analysis
   uploadDataset: async (formData, onUploadProgress) => {
@@ -81,7 +75,6 @@ export const apiService = {
       throw error;
     }
   },
-
 
   // Analyze chart image
   analyzeChart: async (file, onUploadProgress) => {
@@ -103,7 +96,6 @@ export const apiService = {
     }
   },
 
-
   // Chat with AI
   chat: async (message, sessionId = null, contextType = 'general') => {
     try {
@@ -119,7 +111,6 @@ export const apiService = {
     }
   },
 
-
   // Get session details
   getSession: async (sessionId) => {
     try {
@@ -129,7 +120,6 @@ export const apiService = {
       throw error;
     }
   },
-
 
   // Download file
   downloadFile: async (sessionId, fileType) => {
@@ -154,7 +144,6 @@ export const apiService = {
       throw error;
     }
   },
-
 
   // WebSocket connection for real-time chat
   connectWebSocket: (sessionId, onMessage, onError) => {
@@ -191,7 +180,6 @@ export const apiService = {
     }
   },
 
-
   // Get all sessions (for history)
   getAllSessions: async (limit = 50) => {
     try {
@@ -201,7 +189,6 @@ export const apiService = {
       throw error;
     }
   },
-
 
   // Delete session
   deleteSession: async (sessionId) => {
@@ -215,7 +202,6 @@ export const apiService = {
   },
 };
 
-
 // Utility functions
 export const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 Bytes';
@@ -224,7 +210,6 @@ export const formatFileSize = (bytes) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
-
 
 export const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -235,7 +220,6 @@ export const formatDate = (dateString) => {
     minute: '2-digit',
   });
 };
-
 
 export const validateFile = (file, allowedTypes, maxSize) => {
   if (!allowedTypes.includes(file.type)) {
@@ -250,7 +234,6 @@ export const validateFile = (file, allowedTypes, maxSize) => {
 
   return true;
 };
-
 
 // Export default api instance
 export default api;

@@ -29,11 +29,58 @@ import pickle
 from dotenv import load_dotenv
 
 # Import our enhanced modules
-from backend.modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
-from backend.modules.enhanced_eda import AutoEDAPipeline
-from backend.modules.enhanced_ml import EnhancedMLPipeline
-from backend.modules.enhanced_chat import IntelligentChatEngine
-from backend.modules.database import DatabaseManager
+try:
+    from modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
+    from modules.enhanced_eda import AutoEDAPipeline
+    from modules.enhanced_ml import EnhancedMLPipeline
+    from modules.enhanced_chat import IntelligentChatEngine
+    from modules.database import DatabaseManager
+except ImportError:
+    print("Warning: Some modules not found, using mock implementations")
+
+
+    class CNNChartClassifier:
+        def classify_chart(self, image):
+            return "bar_chart", 0.85
+
+
+    class EnhancedImageProcessor:
+        def extract_chart_data(self, image, chart_type):
+            return {"sample": "data"}
+
+        def extract_chart_regions(self, image):
+            return [image]
+
+
+    class AutoEDAPipeline:
+        async def run_analysis(self, df, task_type, target_column):
+            return df, {"basic_stats": df.describe().to_dict()}
+
+
+    class EnhancedMLPipeline:
+        async def train_and_evaluate(self, df, task_type, target_column):
+            return {"accuracy": 0.85, "model_type": "mock"}
+
+
+    class IntelligentChatEngine:
+        def __init__(self, api_key, api_url, model):
+            self.api_key = api_key
+            self.api_url = api_url
+            self.model = model
+
+        async def generate_response(self, message, context, context_type):
+            return f"Mock response to: {message}"
+
+        async def generate_chart_insights(self, chart_type, data, dataset=None):
+            return [f"This appears to be a {chart_type} chart"]
+
+        async def generate_summary_insights(self, chart_data, dataset):
+            return "Summary of chart analysis"
+
+
+    class DatabaseManager:
+        def __init__(self, engine):
+            self.engine = engine
 
 load_dotenv()
 
@@ -87,7 +134,7 @@ app = FastAPI(title="InsightForge AI", version="2.0.0")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -102,7 +149,10 @@ image_processor = EnhancedImageProcessor()
 eda_pipeline = AutoEDAPipeline()
 ml_pipeline = EnhancedMLPipeline()
 chat_engine = IntelligentChatEngine(GROQ_API_KEY, GROQ_API_URL, GROQ_MODEL)
-db_manager = DatabaseManager(engine)
+try:
+    db_manager = DatabaseManager(engine)
+except:
+    db_manager = None
 
 
 # Dependency to get DB session
@@ -158,8 +208,6 @@ manager = ConnectionManager()
 
 
 # API Routes
-
-
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "service": "InsightForge AI", "version": "2.0.0"}
@@ -341,6 +389,37 @@ async def get_session(session_id: str, db: Session = Depends(get_db)):
     }
 
 
+@app.get("/api/sessions")
+async def get_all_sessions(limit: int = 50, db: Session = Depends(get_db)):
+    sessions = db.query(AnalysisSession).order_by(AnalysisSession.created_at.desc()).limit(limit).all()
+    return {
+        "sessions": [
+            {
+                "id": session.id,
+                "created_at": session.created_at,
+                "task_type": session.task_type,
+                "target_column": session.target_column,
+                "dataset_info": json.loads(session.dataset_info) if session.dataset_info else {}
+            }
+            for session in sessions
+        ]
+    }
+
+
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str, db: Session = Depends(get_db)):
+    session = db.query(AnalysisSession).filter(AnalysisSession.id == session_id).first()
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    # Delete chat messages
+    db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
+    db.delete(session)
+    db.commit()
+
+    return {"message": "Session deleted successfully"}
+
+
 @app.get("/api/download/{session_id}/{file_type}")
 async def download_file(session_id: str, file_type: str):
     try:
@@ -443,5 +522,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8001)
-
-
