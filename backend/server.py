@@ -517,6 +517,9 @@ async def analyze_pdf_charts(pdf_path: str, dataset: pd.DataFrame) -> Dict[str, 
     except Exception as e:
         return {"error": f"PDF analysis failed: {str(e)}"}
 
+from backend.api import router as api_router
+
+app.include_router(api_router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

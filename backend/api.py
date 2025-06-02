@@ -21,12 +21,13 @@ from .modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
 from .modules.enhanced_eda import AutoEDAPipeline
 from .modules.enhanced_ml import EnhancedMLPipeline
 from .modules.enhanced_chat import IntelligentChatEngine
-from .modules.pdf_processor import analyze_pdf_charts'
+from utils.pdf_utils import analyze_pdf_charts
 from modules.enhanced_vision import CNNChartClassifier, EnhancedImageProcessor
 from modules.enhanced_eda import AutoEDAPipeline
 from modules.enhanced_ml import EnhancedMLPipeline
 from modules.enhanced_chat import IntelligentChatEngine
 from modules.database import get_db, AnalysisSession, ChatMessage
+
 
 UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
 OUTPUT_FOLDER = os.getenv('OUTPUT_FOLDER', 'outputs')
